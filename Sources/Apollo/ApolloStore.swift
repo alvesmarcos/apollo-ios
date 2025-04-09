@@ -33,7 +33,7 @@ public class ApolloStore {
   ///            Defaults to an `InMemoryNormalizedCache`.
   public init(cache: any NormalizedCache = InMemoryNormalizedCache()) {
     self.cache = cache
-    self.queue = DispatchQueue(label: "com.apollographql.ApolloStore", attributes: .concurrent)
+    self.queue = DispatchQueue(label: "com.apollographql.ApolloStore")
   }
 
   fileprivate func didChangeKeys(_ changedKeys: Set<CacheKey>, identifier: UUID?) {
@@ -48,7 +48,7 @@ public class ApolloStore {
   ///   - callbackQueue: The queue to call the completion block on. Defaults to `DispatchQueue.main`.
   ///   - completion: [optional] A completion block to be called after records are merged into the cache.
   public func clearCache(callbackQueue: DispatchQueue = .main, completion: ((Result<Void, any Swift.Error>) -> Void)? = nil) {
-    queue.async(flags: .barrier) {
+    queue.async {
       let result = Result { try self.cache.clear() }
       DispatchQueue.returnResultAsyncIfNeeded(
         on: callbackQueue,
@@ -66,7 +66,7 @@ public class ApolloStore {
   ///   - callbackQueue: The queue to call the completion block on. Defaults to `DispatchQueue.main`.
   ///   - completion: [optional] A completion block to be called after records are merged into the cache.
   public func publish(records: RecordSet, identifier: UUID? = nil, callbackQueue: DispatchQueue = .main, completion: ((Result<Void, any Swift.Error>) -> Void)? = nil) {
-    queue.async(flags: .barrier) {
+    queue.async {
       do {
         let changedKeys = try self.cache.merge(records: records)
         self.didChangeKeys(changedKeys, identifier: identifier)
@@ -91,7 +91,7 @@ public class ApolloStore {
   ///    - subscriber: A subscriber to receive content change notificatons. To avoid a retain cycle,
   ///                  ensure you call `unsubscribe` on this subscriber before it goes out of scope.
   public func subscribe(_ subscriber: any ApolloStoreSubscriber) {
-    queue.async(flags: .barrier) {
+    queue.async {
       self.subscribers.append(subscriber)
     }
   }
@@ -102,7 +102,7 @@ public class ApolloStore {
   ///    - subscriber: A subscribe that has previously been added via `subscribe`. To avoid retain cycles,
   ///                  call `unsubscribe` on all active subscribers before they go out of scope.
   public func unsubscribe(_ subscriber: any ApolloStoreSubscriber) {
-    queue.async(flags: .barrier) {
+    queue.async {
       self.subscribers = self.subscribers.filter({ $0 !== subscriber })
     }
   }
@@ -148,7 +148,7 @@ public class ApolloStore {
     callbackQueue: DispatchQueue? = nil,
     completion: ((Result<T, any Swift.Error>) -> Void)? = nil
   ) {
-    self.queue.async(flags: .barrier) {
+    self.queue.async {
       do {
         let returnValue = try body(ReadWriteTransaction(store: self))
         
